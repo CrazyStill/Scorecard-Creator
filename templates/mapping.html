@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mapping for {{ template_name }} ({{ sport }})</title>
+</head>
+<body>
+  <h1>Map CSV Headers to Placeholders</h1>
+  <p>{{ instructions }}</p>
+  <form method="post">
+    <label>Number of scorecards per page (e.g., 1–4):</label>
+    <input type="number" name="cards_per_page" min="1" max="4" value="4" required><br>
+    {% for header in headers %}
+      <label>{{ header }} maps to:</label>
+      <input type="text" name="{{ header }}" value="{{ header }}" required><br>
+    {% endfor %}
+    <button type="submit">Save Mapping</button>
+  </form>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <ul>
+      {% for message in messages %}
+        <li>{{ message }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+</body>
+</html>

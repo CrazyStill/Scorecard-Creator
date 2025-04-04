@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload New Scorecard Template</title>
+</head>
+<body>
+  <h1>Upload New Scorecard Template</h1>
+  <form method="post" enctype="multipart/form-data">
+    <label>Sport:</label>
+    <input type="text" name="sport" required><br>
+    <label>Template Name:</label>
+    <input type="text" name="template_name" required><br>
+    <label>Word Template (front) (.docx):</label>
+    <input type="file" name="front_file" accept=".docx" required><br>
+    <label>CSV File:</label>
+    <input type="file" name="csv_file" accept=".csv" required><br>
+    <label>Static Back Design?</label>
+    <select name="back_option">
+      <option value="no">No</option>
+      <option value="yes">Yes</option>
+    </select><br>
+    <div id="back_upload" style="display:none;">
+      <label>Back Design (PDF):</label>
+      <input type="file" name="back_file" accept=".pdf"><br>
+    </div>
+    <button type="submit">Upload Template</button>
+  </form>
+  <script>
+    document.querySelector('select[name="back_option"]').addEventListener('change', function(){
+      document.getElementById('back_upload').style.display = this.value === 'yes' ? 'block' : 'none';
+    });
+  </script>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <ul>
+      {% for message in messages %}
+        <li>{{ message }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+</body>
+</html>

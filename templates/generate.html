@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Generate Scorecard for {{ template_name }} ({{ sport }})</title>
+</head>
+<body>
+  <h1>Generate Scorecard</h1>
+  <p>
+    Please download the CSV template, fill in your data, and then upload the completed CSV file.
+  </p>
+  <p>
+    <a href="{{ url_for('download_csv', sport=sport, template_name=template_name) }}">Download CSV Template</a>
+  </p>
+  <form method="post" enctype="multipart/form-data">
+    <label>Upload Filled CSV File:</label>
+    <input type="file" name="filled_csv" accept=".csv" required><br>
+    <button type="submit">Generate Scorecard PDF</button>
+  </form>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <ul>
+      {% for message in messages %}
+        <li>{{ message }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+</body>
+</html>
