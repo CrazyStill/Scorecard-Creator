@@ -185,32 +185,80 @@ def upload():
 def mapping(sport, template_name):
     template_dir = os.path.join(SCTEMP_DIR, secure_filename(sport), secure_filename(template_name))
     csv_path = os.path.join(template_dir, 'template_data.csv')
+    mapping_file = os.path.join(template_dir, 'mapping.json')
+
+    # 1) Load any existing mapping from JSON (if present).
+    existing_cards_per_page = 4
+    existing_mapping = {}
+    if os.path.exists(mapping_file):
+        with open(mapping_file, 'r') as f:
+            data = json.load(f)
+            existing_cards_per_page = data.get("cards_per_page", 4)
+            existing_mapping = data.get("mapping", {})
+
+    # 2) Check if the CSV file exists at all.
     if not os.path.exists(csv_path):
         flash("CSV file not found for this template.")
         return redirect(url_for('index'))
+
+    # 3) If POST, possibly upload a new CSV, then update the mapping.
+    if request.method == 'POST':
+        # a) If a new CSV file is uploaded, replace the old CSV.
+        new_csv = request.files.get('new_csv')
+        if new_csv and allowed_file(new_csv.filename, {'csv'}):
+            new_csv.save(csv_path)
+            flash("CSV file updated successfully.")
+
+        # b) Re-read the (new or old) CSV file to get updated headers.
+        with open(csv_path, newline='', encoding='latin-1') as f:
+            sample = f.read(1024)
+            f.seek(0)
+            dialect = csv.Sniffer().sniff(sample)
+            reader = csv.reader(f, dialect=dialect)
+            headers = next(reader)
+
+        # c) Get the cards_per_page from the form.
+        try:
+            cards_per_page = int(request.form.get('cards_per_page', 4))
+        except ValueError:
+            cards_per_page = 4
+
+        # d) Build the new mapping from the form.
+        new_mapping = {}
+        for h in headers:
+            form_key = f"mapping_{h}"
+            placeholder_value = request.form.get(form_key, h)
+            new_mapping[h] = placeholder_value
+
+        # e) Save the updated mapping to JSON.
+        with open(mapping_file, 'w') as f:
+            json.dump({"cards_per_page": cards_per_page, "mapping": new_mapping}, f)
+
+        flash("Mapping saved successfully.")
+        # Reload the page so the user can see the new headers & placeholders
+        return redirect(url_for('mapping', sport=sport, template_name=template_name))
+
+    # 4) If GET, read the CSV headers so we can display them.
     with open(csv_path, newline='', encoding='latin-1') as f:
         sample = f.read(1024)
         f.seek(0)
         dialect = csv.Sniffer().sniff(sample)
         reader = csv.reader(f, dialect=dialect)
         headers = next(reader)
-    if request.method == 'POST':
-        mapping_data = {}
-        for header in headers:
-            placeholder = request.form.get(header)
-            mapping_data[header] = placeholder if placeholder else header
-        try:
-            cards_per_page = int(request.form.get('cards_per_page', 4))
-        except ValueError:
-            cards_per_page = 4
-        mapping_file = os.path.join(template_dir, 'mapping.json')
-        with open(mapping_file, 'w') as f:
-            json.dump({"cards_per_page": cards_per_page, "mapping": mapping_data}, f)
-        flash("Mapping saved successfully.")
-        return redirect(url_for('index'))
+
+    # 5) Render the page, passing in existing mapping for placeholders.
     instructions = ("For each phrase to be replaced on the template, append an underscore and a number "
-                    "corresponding to the scorecard position on the page (e.g., if 3 scorecards per page, use _1, _2, _3).")
-    return render_template('mapping.html', headers=headers, sport=sport, template_name=template_name, instructions=instructions)
+                    "corresponding to the scorecard position on the page (e.g., if 3 scorecards per page, "
+                    "use _1, _2, _3).")
+    return render_template(
+        'mapping.html',
+        sport=sport,
+        template_name=template_name,
+        instructions=instructions,
+        headers=headers,
+        existing_cards_per_page=existing_cards_per_page,
+        existing_mapping=existing_mapping
+    )
 
 # About page route
 @app.route('/about')
