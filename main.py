@@ -6,6 +6,7 @@ import docx2pdf
 from PyPDF2 import PdfMerger
 import comtypes.client  # For fallback conversion using COM automation
 from io import BytesIO
+import pythoncom       # For COM initialization
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Required for flash messaging
@@ -68,24 +69,32 @@ def merge_two_pdfs(pdf1, pdf2, merged_pdf):
 def convert_docx_to_pdf(docx_path, pdf_path):
     """
     Convert a DOCX file to PDF.
-    First attempts to use docx2pdf.convert; if that fails due to an AttributeError,
+    First attempts to use docx2pdf.convert; if that fails,
     falls back to using COM automation (Windows only).
     """
     try:
         docx2pdf.convert(docx_path, pdf_path)
-    except AttributeError:
+    except Exception as e:
+        # Fallback conversion using COM automation with explicit COM initialization.
+        pythoncom.CoInitialize()
         wdFormatPDF = 17
-        word = comtypes.client.CreateObject("Word.Application")
+        try:
+            word = comtypes.client.CreateObject("Word.Application")
+        except Exception as e2:
+            pythoncom.CoUninitialize()
+            raise e2
         word.Visible = False
         doc = word.Documents.Open(docx_path)
         try:
             doc.SaveAs2(pdf_path, FileFormat=wdFormatPDF)
-        except Exception as e:
+        except Exception as e3:
             doc.Close()
             word.Quit()
-            raise e
+            pythoncom.CoUninitialize()
+            raise e3
         doc.Close()
         word.Quit()
+        pythoncom.CoUninitialize()
 
 def generate_scorecard(template_path, csv_path, mapping, cards_per_page=4, back_pdf_path=None, temp_dir=None):
     """
@@ -233,7 +242,8 @@ def generate(sport, template_name):
          and a form to upload the completed CSV.
     POST: Accept the filled CSV, then create a temporary working directory where all files
           (intermediate and final) are processed. The final PDF is then returned (read into memory)
-          and the temporary directory is purged.
+          and the temporary directory is purged. A cookie is set so the client-side JavaScript
+          can detect the completion and redirect the user.
     """
     template_dir = os.path.join(SCTEMP_DIR, secure_filename(sport), secure_filename(template_name))
     front_path = os.path.join(template_dir, 'template_front.docx')
@@ -257,11 +267,13 @@ def generate(sport, template_name):
                                             temp_dir=temp_dir)
             with open(output_pdf, 'rb') as pdf_file:
                 pdf_bytes = pdf_file.read()
-            # Return the PDF from memory; using "download_name" for Flask 2.x+
-            return send_file(BytesIO(pdf_bytes),
+            from flask import make_response
+            response = make_response(send_file(BytesIO(pdf_bytes),
                              download_name=os.path.basename(output_pdf),
                              mimetype='application/pdf',
-                             as_attachment=True)
+                             as_attachment=True))
+            response.set_cookie("fileDownload", "true", max_age=60)
+            return response
     else:
         return render_template('generate.html', sport=sport, template_name=template_name)
 
@@ -289,6 +301,10 @@ def delete_template(sport, template_name):
     else:
         flash("Template not found.")
     return redirect(url_for('index'))
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
