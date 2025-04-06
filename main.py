@@ -7,7 +7,7 @@ from PyPDF2 import PdfMerger
 import comtypes.client  # Helps with error handling via fallbacks
 from io import BytesIO
 import pythoncom       # Initializes COM
-import mammoth         # Converts DOCX to HTML
+
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Facilitates user messages
