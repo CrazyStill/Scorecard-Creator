@@ -3,27 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <title>Mapping for {{ template_name }} ({{ sport }})</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { padding-top: 70px; }
+  </style>
 </head>
 <body>
-  <h1>Map CSV Headers to Placeholders</h1>
-  <p>{{ instructions }}</p>
-  <form method="post">
-    <label>Number of scorecards per page (e.g., 1–4):</label>
-    <input type="number" name="cards_per_page" min="1" max="4" value="4" required><br>
-    {% for header in headers %}
-      <label>{{ header }} maps to:</label>
-      <input type="text" name="{{ header }}" value="{{ header }}" required><br>
-    {% endfor %}
-    <button type="submit">Save Mapping</button>
-  </form>
-  {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      <ul>
-      {% for message in messages %}
-        <li>{{ message }}</li>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+    <div class="container">
+      <a class="navbar-brand" href="{{ url_for('index') }}">Scorecard Creator</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+         <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+         <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+               <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+            </li>
+         </ul>
+      </div>
+    </div>
+  </nav>
+  
+  <div class="container">
+    <h1 class="mb-4">Map CSV Headers to Placeholders</h1>
+    <p>{{ instructions }}</p>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-info">
+          {% for message in messages %}
+            <div>{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    <form method="post">
+      <div class="mb-3">
+        <label for="cards_per_page" class="form-label">Number of scorecards per page (e.g., 1–4):</label>
+        <input type="number" class="form-control" name="cards_per_page" id="cards_per_page" min="1" max="4" value="4" required>
+      </div>
+      {% for header in headers %}
+        <div class="mb-3">
+          <label for="{{ header }}" class="form-label">{{ header }} maps to:</label>
+          <input type="text" class="form-control" name="{{ header }}" id="{{ header }}" value="{{ header }}" required>
+        </div>
       {% endfor %}
-      </ul>
-    {% endif %}
-  {% endwith %}
+      <button type="submit" class="btn btn-primary">Save Mapping</button>
+    </form>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
