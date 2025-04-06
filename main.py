@@ -4,14 +4,14 @@ from werkzeug.utils import secure_filename
 from docx import Document
 import docx2pdf
 from PyPDF2 import PdfMerger
-import comtypes.client  # For fallback conversion using COM automation
+import comtypes.client  #Helps with error handling via fallbacks
 from io import BytesIO
-import pythoncom       # For COM initialization
+import pythoncom       #Initializes COM
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Required for flash messaging
+app.secret_key = 'your_secret_key'  #Facilitates user messages
 
-# Base directory for storing uploaded scorecard templates (separate from HTML templates)
+#Base directory for storing uploaded scorecard templates
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 SCTEMP_DIR = os.path.join(BASE_DIR, 'SCTEMP')
 if not os.path.exists(SCTEMP_DIR):
@@ -20,7 +20,7 @@ if not os.path.exists(SCTEMP_DIR):
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
-# ===================== Document Processing Functions =====================
+#Functions for processing documents
 
 def merge_runs_in_paragraph(paragraph):
     if len(paragraph.runs) <= 1:
@@ -41,12 +41,8 @@ def replace_placeholders_in_paragraphs(paragraphs, placeholders):
         for placeholder, replacement in placeholders:
             replace_text_in_paragraph(paragraph, placeholder, replacement)
 
+#Replaces placeholders in CSV doc
 def replace_text_in_doc(doc, rows, mapping, cards_per_page=4):
-    """
-    Replace placeholders in the document.
-    For each scorecard (from 1 to cards_per_page) and for each CSV header mapping,
-    the function looks for placeholders like "PLACEHOLDER_1", "PLACEHOLDER_2", etc.
-    """
     all_placeholders = []
     for i in range(1, cards_per_page+1):
         row = rows[i-1] if i-1 < len(rows) else None
@@ -67,15 +63,11 @@ def merge_two_pdfs(pdf1, pdf2, merged_pdf):
     merger.close()
 
 def convert_docx_to_pdf(docx_path, pdf_path):
-    """
-    Convert a DOCX file to PDF.
-    First attempts to use docx2pdf.convert; if that fails,
-    falls back to using COM automation (Windows only).
-    """
+    #If conversion to pdf fails, fallback is used for error handling
     try:
         docx2pdf.convert(docx_path, pdf_path)
     except Exception as e:
-        # Fallback conversion using COM automation with explicit COM initialization.
+        #COM fallback code
         pythoncom.CoInitialize()
         wdFormatPDF = 17
         try:
@@ -96,11 +88,8 @@ def convert_docx_to_pdf(docx_path, pdf_path):
         word.Quit()
         pythoncom.CoUninitialize()
 
+#Generates scorecard PDF, stores temporary files in temp_dir
 def generate_scorecard(template_path, csv_path, mapping, cards_per_page=4, back_pdf_path=None, temp_dir=None):
-    """
-    Generate the final scorecard PDF.
-    All temporary files (e.g. intermediate DOCX/PDFs) are created in temp_dir.
-    """
     final_pdf_list = []
     with open(csv_path, newline='', encoding='latin-1') as f:
         sample = f.read(1024)
@@ -135,11 +124,11 @@ def generate_scorecard(template_path, csv_path, mapping, cards_per_page=4, back_
         os.remove(pdf)
     return output_pdf
 
-# ===================== Flask Routes =====================
+#Routes for Flask application
 
+#Lists available templates
 @app.route('/')
 def index():
-    """List all available scorecard templates."""
     templates_list = []
     for sport in os.listdir(SCTEMP_DIR):
         sport_dir = os.path.join(SCTEMP_DIR, sport)
@@ -150,17 +139,9 @@ def index():
                     templates_list.append({'sport': sport, 'template': template_name})
     return render_template('index.html', templates=templates_list)
 
+#Uploads new .docx template when provided sport, name, and corresponding CSV (static PDF for back optional). Stored in SCTEMP/[SPORT]/[TEMPLATE_NAME]
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
-    """
-    Upload a new scorecard template.
-    The user must provide:
-     - Sport and Template Name
-     - A Word template (front) (.docx)
-     - A CSV template file for data entry
-     - Optionally, a static back design (.pdf)
-    These files are stored under SCTEMP/(SPORT)/(TEMPLATENAME)/.
-    """
     if request.method == 'POST':
         sport = request.form.get('sport')
         template_name = request.form.get('template_name')
@@ -171,21 +152,21 @@ def upload():
         template_name = secure_filename(template_name)
         template_dir = os.path.join(SCTEMP_DIR, sport, template_name)
         os.makedirs(template_dir, exist_ok=True)
-        # Save the front Word template
+        #Save .docx template for front
         front_file = request.files.get('front_file')
         if not front_file or not allowed_file(front_file.filename, {'docx'}):
             flash("A valid Word template file (.docx) is required.")
             return redirect(request.url)
         front_path = os.path.join(template_dir, 'template_front.docx')
         front_file.save(front_path)
-        # Save the CSV file (template for data entry)
+        #Save CSV for data entry
         csv_file = request.files.get('csv_file')
         if not csv_file or not allowed_file(csv_file.filename, {'csv'}):
             flash("A valid CSV file is required.")
             return redirect(request.url)
         csv_path = os.path.join(template_dir, 'template_data.csv')
         csv_file.save(csv_path)
-        # Optionally save a static back design
+        #Optional PDF for back
         back_option = request.form.get('back_option')
         if back_option == 'yes':
             back_file = request.files.get('back_file')
@@ -198,13 +179,9 @@ def upload():
         return redirect(url_for('mapping', sport=sport, template_name=template_name))
     return render_template('upload.html')
 
+#Reads CSV headers and maps them to placeholder text, map stored as JSON file with cards_per_page; also lets the user choose number of cards to be printed
 @app.route('/mapping/<sport>/<template_name>', methods=['GET', 'POST'])
 def mapping(sport, template_name):
-    """
-    Read the CSV headers from the uploaded CSV template and prompt the user to map
-    each header to a placeholder text. Also ask how many scorecards per page will be printed.
-    The mapping (with cards_per_page) is stored as JSON.
-    """
     template_dir = os.path.join(SCTEMP_DIR, secure_filename(sport), secure_filename(template_name))
     csv_path = os.path.join(template_dir, 'template_data.csv')
     if not os.path.exists(csv_path):
@@ -235,16 +212,11 @@ def mapping(sport, template_name):
                     "use _1, _2, _3).")
     return render_template('mapping.html', headers=headers, sport=sport, template_name=template_name, instructions=instructions)
 
+#If method is GET, displays page to download CSV for data entry and form to upload CSV when done
+#If method is POST, accepts filled CSV and creates temporary storage directory. When final PDF is read into memory, temp directory is purged
+#Cookie that confirms completion and redirects is set here
 @app.route('/generate/<sport>/<template_name>', methods=['GET', 'POST'])
 def generate(sport, template_name):
-    """
-    GET: Display a page to download the CSV template so the user can enter their data,
-         and a form to upload the completed CSV.
-    POST: Accept the filled CSV, then create a temporary working directory where all files
-          (intermediate and final) are processed. The final PDF is then returned (read into memory)
-          and the temporary directory is purged. A cookie is set so the client-side JavaScript
-          can detect the completion and redirect the user.
-    """
     template_dir = os.path.join(SCTEMP_DIR, secure_filename(sport), secure_filename(template_name))
     front_path = os.path.join(template_dir, 'template_front.docx')
     mapping_file = os.path.join(template_dir, 'mapping.json')
@@ -277,11 +249,9 @@ def generate(sport, template_name):
     else:
         return render_template('generate.html', sport=sport, template_name=template_name)
 
+#Shows original CSV template for user to download and fill out
 @app.route('/download_csv/<sport>/<template_name>')
 def download_csv(sport, template_name):
-    """
-    Serve the original CSV template file so the user can download and fill it with data.
-    """
     template_dir = os.path.join(SCTEMP_DIR, secure_filename(sport), secure_filename(template_name))
     csv_template_path = os.path.join(template_dir, 'template_data.csv')
     if not os.path.exists(csv_template_path):
@@ -289,11 +259,9 @@ def download_csv(sport, template_name):
          return redirect(url_for('index'))
     return send_file(csv_template_path, as_attachment=True)
 
+#Completely wipes given template directory
 @app.route('/delete/<sport>/<template_name>', methods=['POST'])
 def delete_template(sport, template_name):
-    """
-    Delete the entire directory for a given scorecard template.
-    """
     template_dir = os.path.join(SCTEMP_DIR, secure_filename(sport), secure_filename(template_name))
     if os.path.exists(template_dir):
         shutil.rmtree(template_dir)
