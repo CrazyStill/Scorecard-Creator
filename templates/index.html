@@ -17,7 +17,6 @@
   </style>
 </head>
 <body>
-  <!-- Consistent Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
     <div class="container-fluid">
       <a class="navbar-brand" href="{{ url_for('index') }}">Scorecard Generator</a>
@@ -41,7 +40,6 @@
     </div>
   </nav>
 
-  <!-- Page Content -->
   <div class="container mt-4">
     {% with messages = get_flashed_messages() %}
       {% if messages %}

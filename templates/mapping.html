@@ -44,7 +44,6 @@
       {% endif %}
     {% endwith %}
     
-    <!-- The user can upload a new CSV (optional) and update placeholders in one go -->
     <form method="post" enctype="multipart/form-data">
       <div class="mb-3">
         <label for="new_csv" class="form-label">Upload New CSV (optional):</label>
@@ -57,8 +56,6 @@
                min="1" max="4" value="{{ existing_cards_per_page }}" required>
       </div>
       
-      <!-- Loop over CSV headers; for each, show a text input. 
-           If existing_mapping[header] is defined, use that as the default value. -->
       {% for header in headers %}
         <div class="mb-3">
           <label for="mapping_{{ header }}" class="form-label">{{ header }} maps to:</label>

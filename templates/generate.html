@@ -10,7 +10,6 @@
   </style>
 </head>
 <body>
-  <!-- Consistent Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
     <div class="container-fluid">
       <a class="navbar-brand" href="{{ url_for('index') }}">Scorecard Generator</a>
@@ -33,8 +32,7 @@
       </div>
     </div>
   </nav>
-  
-  <!-- Page Content -->
+
   <div class="container mt-4">
     <h1 class="mb-4">Generate Scorecard</h1>
     <p>Please download the CSV template, fill in your data, and then upload the completed CSV file.</p>
@@ -65,13 +63,10 @@
     function showSpinner() {
       document.getElementById("form-container").style.display = "none";
       document.getElementById("spinner-container").style.display = "block";
-      // Poll for the download cookie.
       var interval = setInterval(function() {
         if (document.cookie.indexOf("fileDownload=true") !== -1) {
           clearInterval(interval);
-          // Clear the cookie.
           document.cookie = "fileDownload=; expires=Thu, 01 Jan 2000 00:00:00 UTC; path=/;";
-          // Redirect to the main page.
           window.location.href = "{{ url_for('index') }}";
         }
       }, 500);
