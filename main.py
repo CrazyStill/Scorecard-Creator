@@ -14,9 +14,7 @@ from generate import (
 )
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # or pull from os.environ
-
-# Base directory for storing uploaded scorecard templates
+app.secret_key = 'your_secret_key'  
 BASE_DIR   = os.path.abspath(os.path.dirname(__file__))
 SCTEMP_DIR = os.path.join(BASE_DIR, 'SCTEMP')
 if not os.path.exists(SCTEMP_DIR):
@@ -57,21 +55,19 @@ def upload():
         template_dir   = os.path.join(SCTEMP_DIR, sport, template_name)
         os.makedirs(template_dir, exist_ok=True)
 
-        # Front .docx
         front_file = request.files.get('front_file')
         if not front_file or not allowed_file(front_file.filename, {'docx'}):
             flash("A valid Word template file (.docx) is required.")
             return redirect(request.url)
         front_file.save(os.path.join(template_dir, 'template_front.docx'))
 
-        # CSV
         csv_file = request.files.get('csv_file')
         if not csv_file or not allowed_file(csv_file.filename, {'csv'}):
             flash("A valid CSV file is required.")
             return redirect(request.url)
         csv_file.save(os.path.join(template_dir, 'template_data.csv'))
 
-        # Optional back PDF
+
         if request.form.get('back_option') == 'yes':
             back_file = request.files.get('back_file')
             if back_file and allowed_file(back_file.filename, {'pdf'}):
@@ -102,7 +98,7 @@ def mapping(sport, template_name):
         flash("CSV file not found for this template.")
         return redirect(url_for('index'))
 
-    # load existing
+
     existing_cards_per_page = 4
     existing_mapping = {}
     if os.path.exists(mapping_file):
@@ -111,13 +107,11 @@ def mapping(sport, template_name):
         existing_mapping = data.get("mapping", {})
 
     if request.method == 'POST':
-        # optional CSV update
         new_csv = request.files.get('new_csv')
         if new_csv and allowed_file(new_csv.filename, {'csv'}):
             new_csv.save(csv_path)
             flash("CSV file updated successfully.")
 
-        # sniff headers
         with open(csv_path, newline='', encoding='latin-1') as f:
             sample = f.read(1024); f.seek(0)
             dialect = csv.Sniffer().sniff(sample)
@@ -146,7 +140,6 @@ def mapping(sport, template_name):
             template_name=template_name
         ))
 
-    # GET => show form
     with open(csv_path, newline='', encoding='latin-1') as f:
         sample = f.read(1024); f.seek(0)
         dialect = csv.Sniffer().sniff(sample)

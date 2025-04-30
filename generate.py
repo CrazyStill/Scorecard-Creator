@@ -48,7 +48,6 @@ def convert_docx_to_pdf(docx_path, pdf_path):
     try:
         docx2pdf.convert(docx_path, pdf_path)
     except Exception:
-        # COM fallback code
         pythoncom.CoInitialize()
         wdFormatPDF = 17
         word = comtypes.client.CreateObject("Word.Application")
@@ -93,7 +92,6 @@ def generate_scorecard(template_path, csv_path, mapping,
         os.remove(temp_front_docx)
         os.remove(temp_front_pdf)
 
-    # Merge all pages in numeric order
     output_pdf = os.path.join(temp_dir, "Final_Scorecards.pdf")
     merger = PdfMerger()
     for pdf in sorted(final_pdf_list, key=lambda x: int(x.split('_')[-1].split('.')[0])):
@@ -101,7 +99,6 @@ def generate_scorecard(template_path, csv_path, mapping,
     merger.write(output_pdf)
     merger.close()
 
-    # clean up individual pages
     for pdf in final_pdf_list:
         os.remove(pdf)
 
